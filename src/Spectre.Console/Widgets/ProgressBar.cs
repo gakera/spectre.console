@@ -17,7 +17,9 @@ internal sealed class ProgressBar : Renderable, IHasCulture
     public CultureInfo? Culture { get; set; }
 
     public Style CompletedStyle { get; set; } = new Style(foreground: Color.Yellow);
+    public Style CompletedGradientStyle { get; set; } = new Style(foreground: new Color(177, 79, 255), background: new Color(0, 255, 163));
     public Style FinishedStyle { get; set; } = new Style(foreground: Color.Green);
+    public Style FinishedGradientStyle { get; set; } = new Style(foreground: new Color(177, 79, 255), background: new Color(0, 255, 163));
     public Style RemainingStyle { get; set; } = new Style(foreground: Color.Grey);
     public Style IndeterminateStyle { get; set; } = DefaultPulseStyle;
 
@@ -46,7 +48,7 @@ internal sealed class ProgressBar : Renderable, IHasCulture
         }
 
         var bar = !context.Unicode ? AsciiBar : UnicodeBar;
-        var style = isCompleted ? FinishedStyle : CompletedStyle;
+        var style = isCompleted ? FinishedGradientStyle : CompletedGradientStyle;
         var barCount = Math.Max(0, (int)(width * (completedBarCount / MaxValue)));
 
         // Show value?
@@ -62,7 +64,14 @@ internal sealed class ProgressBar : Renderable, IHasCulture
             yield break;
         }
 
-        yield return new Segment(new string(bar, barCount), style);
+        for (int i = 0; i < barCount; i++)
+        {
+            var pos = i / (float)barCount;
+            var colorGrad = style.Foreground.Blend(style.Background, pos);
+            yield return new Segment(bar.ToString(), new Style(foreground: colorGrad));
+        }
+
+        //yield return new Segment(new string(bar, barCount), style);
 
         if (ShowValue)
         {
