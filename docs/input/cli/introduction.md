@@ -118,7 +118,7 @@ of the application are separated, while still having the option to share things 
 flags and arguments between them.
 
 This makes the resulting code very clean and easy to navigate, not to mention to unit test.
-And most important of all, the type system guides me to do the right thing. I can't configure 
-commands in non-compatible ways, and if I want to add a new top-level `add-package` command 
-(or move the command completely), it's just a single line to change. This makes it easy to 
+And most important of all, the type system guides the developer to do the right thing. Commands can't 
+be configured in non-compatible ways, and if a new top-level `add-package` command is to be added
+(or moved completely), it's just a single line to change. This makes it easy to 
 experiment and makes the CLI experience a first class citizen of your application.
