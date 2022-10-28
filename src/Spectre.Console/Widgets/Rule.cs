@@ -15,6 +15,8 @@ public sealed class Rule : Renderable, IAlignable, IHasBoxBorder
     /// </summary>
     public Style? Style { get; set; }
 
+    public Style GradientStyle { get; set; } = new Style(foreground: new Color(177, 79, 255), background: new Color(0, 255, 163));     
+
     /// <summary>
     /// Gets or sets the rule's title alignment.
     /// </summary>
@@ -68,9 +70,9 @@ public sealed class Rule : Renderable, IAlignable, IHasBoxBorder
         var (left, right) = GetLineSegments(context, maxWidth, title);
 
         var segments = new List<Segment>();
-        segments.Add(left);
+        segments.AddRange(left);
         segments.AddRange(title);
-        segments.Add(right);
+        segments.AddRange(right);
         segments.Add(Segment.LineBreak);
 
         return segments;
@@ -81,11 +83,16 @@ public sealed class Rule : Renderable, IAlignable, IHasBoxBorder
         var border = Border.GetSafeBorder(safe: !context.Unicode);
         var text = border.GetPart(BoxBorderPart.Top).Repeat(maxWidth);
 
-        return new[]
+        var segs = new List<Segment>(text.Length);
+        for (int i = 0; i < text.Length; i++)
         {
-            new Segment(text, Style ?? Style.Plain),
-            Segment.LineBreak,
-        };
+            var pos = i / (float)text.Length;
+            var colorGrad = GradientStyle.Foreground.Blend(GradientStyle.Background, pos);
+            segs.Add(new Segment(text[i].ToString(), new Style(foreground: colorGrad)));
+        }
+
+        segs.Add(Segment.LineBreak);
+        return segs;
     }
 
     private IEnumerable<Segment> GetTitleSegments(RenderContext context, string title, int width)
@@ -95,9 +102,17 @@ public sealed class Rule : Renderable, IAlignable, IHasBoxBorder
         return ((IRenderable)markup).Render(context.WithSingleLine(), width);
     }
 
-    private (Segment Left, Segment Right) GetLineSegments(RenderContext context, int width, IEnumerable<Segment> title)
+    private (List<Segment> Left, List<Segment> Right) GetLineSegments(RenderContext context, int width, IEnumerable<Segment> title)
     {
         var titleLength = Segment.CellCount(title);
+
+        var colorRamp = new List<Style>(width);
+        for (int i = 0; i < width; i++)
+        {
+            var pos = i / (float)width;
+            var colorGrad = GradientStyle.Foreground.Blend(GradientStyle.Background, pos);
+            colorRamp.Add(new Style(foreground: colorGrad, background: (Style ?? Style.Plain).Background));
+        }
 
         var border = Border.GetSafeBorder(safe: !context.Unicode);
         var borderPart = border.GetPart(BoxBorderPart.Top);
@@ -105,31 +120,87 @@ public sealed class Rule : Renderable, IAlignable, IHasBoxBorder
         var alignment = Alignment ?? Justify.Center;
         if (alignment == Justify.Left)
         {
-            var left = new Segment(borderPart.Repeat(TitlePadding) + new string(' ', TitleSpacing), Style ?? Style.Plain);
+            var leftList = new List<Segment>(TitlePadding + 1);
+            for (int i = 0; i < TitlePadding; i++)
+            {
+                leftList.Add(new Segment(borderPart, colorRamp[i]));
+            }
 
-            var rightLength = width - titleLength - left.CellCount() - TitleSpacing;
-            var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(rightLength), Style ?? Style.Plain);
+            leftList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
+            //var left = new Segment(borderPart.Repeat(TitlePadding) + new string(' ', TitleSpacing), Style ?? Style.Plain);
 
-            return (left, right);
+            var rightLength = width - titleLength - leftList.Sum(x => x.CellCount()) - TitleSpacing;
+
+            var rightList = new List<Segment>(1 + TitlePadding + rightLength);
+            rightList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
+
+            for (int i = width - rightLength; i < width; i++)
+            {
+                rightList.Add(new Segment(borderPart, colorRamp[i]));
+            }
+
+            //var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(rightLength), Style ?? Style.Plain);
+
+            return (leftList, rightList);
         }
         else if (alignment == Justify.Center)
         {
             var leftLength = ((width - titleLength) / 2) - TitleSpacing;
-            var left = new Segment(borderPart.Repeat(leftLength) + new string(' ', TitleSpacing), Style ?? Style.Plain);
 
-            var rightLength = width - titleLength - left.CellCount() - TitleSpacing;
-            var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(rightLength), Style ?? Style.Plain);
+            var leftList = new List<Segment>(leftLength);
+            for (int i = 0; i < leftLength; i++)
+            {
+                leftList.Add(new Segment(borderPart, colorRamp[i]));
+            }
 
-            return (left, right);
+            leftList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
+            //var left = new Segment(borderPart.Repeat(TitlePadding) + new string(' ', TitleSpacing), Style ?? Style.Plain);
+
+            var rightLength = width - titleLength - leftList.Sum(x => x.CellCount()) - TitleSpacing;
+
+            var rightList = new List<Segment>(1 + TitlePadding + rightLength);
+            rightList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
+
+            for (int i = width - rightLength; i < width; i++)
+            {
+                rightList.Add(new Segment(borderPart, colorRamp[i]));
+            }
+
+            //var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(rightLength), Style ?? Style.Plain);
+
+            return (leftList, rightList);
+
+            //var leftLength = ((width - titleLength) / 2) - TitleSpacing;
+            //var left = new Segment(borderPart.Repeat(leftLength) + new string(' ', TitleSpacing), Style ?? Style.Plain);
+
+            //var rightLength = width - titleLength - left.CellCount() - TitleSpacing;
+            //var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(rightLength), Style ?? Style.Plain);
+
+            //return (new List<Segment> { left }, new List<Segment> { right });
         }
         else if (alignment == Justify.Right)
         {
-            var right = new Segment(new string(' ', TitleSpacing) + borderPart.Repeat(TitlePadding), Style ?? Style.Plain);
+            var rightList = new List<Segment>(TitlePadding + 1);
+            rightList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
 
-            var leftLength = width - titleLength - right.CellCount() - TitleSpacing;
-            var left = new Segment(borderPart.Repeat(leftLength) + new string(' ', TitleSpacing), Style ?? Style.Plain);
+            for (int i = width - TitlePadding; i < width; i++)
+            {
+                rightList.Add(new Segment(borderPart, colorRamp[i]));
+            }
 
-            return (left, right);
+            //var left = new Segment(borderPart.Repeat(TitlePadding) + new string(' ', TitleSpacing), Style ?? Style.Plain);
+
+            var leftLength = width - titleLength - rightList.Sum(x => x.CellCount()) - TitleSpacing;
+
+            var leftList = new List<Segment>(1 + TitlePadding + leftLength);
+
+            for (int i = 0; i < leftLength; i++)
+            {
+                leftList.Add(new Segment(borderPart, colorRamp[i]));
+            }
+            leftList.Add(new Segment(new string(' ', TitleSpacing), Style ?? Style.Plain));
+
+            return (leftList, rightList);
         }
 
         throw new NotSupportedException("Unsupported alignment.");
