@@ -21,9 +21,9 @@ Imagine the following command structure:
     * package `<PACKAGE_NAME>` --version `<VERSION>`
     * reference `<PROJECT_REFERENCE>`
 
-For this I would like to implement the commands (the different levels in the tree that 
+For this the intention is to implement the commands (the different levels in the tree that 
 executes something) separately from the settings (the options, flags and arguments), 
-which I want to be able to inherit from each other.
+such that they are able to inherit from each other.
 
 ## Specify the settings
 
